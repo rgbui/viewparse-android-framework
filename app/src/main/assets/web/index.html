@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+
+<head> 
+    <meta charset="utf-8" />
+    <title>联系人</title> 
+    <style type="text/css">
+        input {
+            width: 150px;
+        }
+
+        #content {
+            margin-top: 10px;
+        }
+
+        .form {
+            width: 220px;
+            text-align: right;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body style="height: 2000px;">
+    <div>
+        <div class="api">
+            <input type="button" value="获取联系人" onclick="getContacts()" />
+            <input type="button" value="获取联系人 姓名" onclick="getContacts('阚','')" />
+            <input type="button" value="获取联系人 手机号" onclick="getContacts('','139')" />
+            <input type="button" value="添加联系人" onclick="addContact()" />
+            <input type="button" value="修改联系人" onclick="updateContact()" />
+            <input type="button" value="删除联系人" onclick="deleteContact()" />
+            <p>--------------</p>
+            <input type="button" value="跳到拨号界面" onclick="showCall()" />
+            <input type="button" value="直接拨号" onclick="call()" />
+            <input type="button" value="获取SIM卡与网络信息" onclick="getSimnetIinfo()" />
+            <p>--------------</p>
+            <input type="button" value="获取当前连接的wifi" onclick="getConnectedWifi()" />
+            <input type="button" value="获取周围可连接的wifi列表" onclick="getScanWifiList()" />
+            <input type="button" value="连接wifi" onclick="connectWifi()" />
+            <p>--------------</p>
+            <input type="button" value="拍照获取预览图" onclick="getThumbnail()" />
+            <input type="button" value="拍照获取原图" onclick="getOriginal()" />
+            <p>--------------</p>
+            <input type="button" value="发短信" onclick="sendSms()" />
+            <p>--------------</p>
+            <input type="button" value="设置锁屏壁纸" onclick="setLockWallpaper()" />
+            <p>--------------</p>
+            <input type="button" value="获取图片信息" onclick="getImageInfo()" />
+            <p>--------------</p>
+            <input type="button" value="开闪光灯" onclick="lightOn()" />
+            <input type="button" value="关闪光灯" onclick="lightOff()" />
+            <input type="button" value="闪光灯是否开启" onclick="isLightOn()" />
+            <input type="button" value="手机是否有闪光灯" onclick="hasLight()" />
+            <input type="button" value="开SOS" onclick="sosOn()" />
+            <p>--------------</p>
+            <input type="button" value="扫码" onclick="scanQrcode()" />
+        </div>
+        <p>###############</p>
+        <div class="clear">
+            <input type="button" value="清空内容" onclick="clearContent()" />
+        </div>
+    </div>
+    <div id="content">
+        内容为空
+    </div>
+
+</body>
+
+</html>
+<script>
+    //向后台发请求
+    function sock(url, param, cb) {
+        const CHANNEL_NAME = "$$android_sock_js_bridge";
+        var json = { 'url': url };
+        if (param && Object.keys(param).length > 0) {
+            json.data = JSON.stringify(param);
+        }
+        window.WebViewJavascriptBridge.callHandler(
+            CHANNEL_NAME
+            , json
+            , function (responseData) {
+                cb(JSON.parse(responseData));
+            }
+        );
+    }
+
+    //测试代码
+    function clearContent() {
+        document.getElementById("content").innerHTML = "内容为空";
+    }
+    function setContent(data) {
+        if (typeof data == 'object') data = JSON.stringify(data);
+        document.getElementById("content").innerHTML = data;
+    }
+    var dataList = [];
+
+    //API
+    //添加联系人
+    function addContact() {
+        var d = new Date();
+        var dateId = `${d.getHours()} ${d.getMinutes()} ${d.getMinutes()}`;
+        var json = { name: "测试-" + dateId, phone: "1234" };
+        sock('/contact/add', json, function (resData) {
+            setContent(resData);
+        });
+    }
+    //获取联系人
+    function getContacts(name, no) {
+        var url = "";
+        var json = {};
+        if (!name && !no) {
+            url = "/contact/query";
+        }
+        else if (name) {
+            url = '/contact/query/name';
+            json.name = name;
+        }
+        else if (no) {
+            url = '/contact/query/no';
+            json.no = no;
+        }
+        setContent({ url, json });
+        setTimeout(() => {
+            sock(url, json, function (resData) {
+                setContent(resData);
+                dataList = resData.result;
+            });
+        }, 1000);
+    }
+    //修改联系人
+    function updateContact() {
+        var json = dataList.find(x => x.name.indexOf("易饭机") != -1);
+        var d = new Date();
+        var dateId = `${d.getHours()}x${d.getMinutes()}x${d.getMinutes()}`;
+        json.name = json.name + dateId;
+        json.phone = `${d.getHours()}${d.getMinutes()}${d.getMinutes()}`;
+        setContent(json);
+        setTimeout(() => {
+            sock('/contact/update', json, function (resData) {
+                setContent(resData);
+            });
+        }, 1000);
+    }
+    //删除联系人
+    function deleteContact() {
+        var json = { id: "" };
+        var json = dataList.find(x => x.name.indexOf("测试-") != -1);
+        setContent(json);
+        setTimeout(() => {
+            sock('/contact/delete/id', { id: json.id }, function (resData) {
+                setContent(resData);
+            });
+        }, 1000);
+    }
+
+    //跳到拨号
+    function showCall() {
+        var phone = "13949135925";
+        setContent({ phone: phone });
+        setTimeout(() => {
+            sock('/phone/show/call', { phone: phone }, function (resData) {
+                setContent(resData);
+            });
+        }, 1000);
+    }
+
+    //直接拨号
+    function call() {
+        var phone = "13949135925";
+        setContent({ phone: phone });
+        setTimeout(() => {
+            sock('/phone/call', { phone: phone }, function (resData) {
+                setContent(resData);
+            });
+        }, 1000);
+    }
+
+    //SIM卡与网络信息
+    function getSimnetIinfo() {
+        setTimeout(() => {
+            sock('/sim/info', {}, function (resData) {
+                var str = JSON.stringify(resData);
+                setContent(resData);
+            });
+        }, 1000);
+    }
+
+    //获取当前连接的wifi
+    function getConnectedWifi() {
+        setTimeout(() => {
+            sock('/wifi/get/connected', {}, function (resData) {
+                setContent(JSON.stringify(resData));
+            });
+        }, 1000);
+    }
+    //获取周围可连接的wifi列表
+    function getScanWifiList() {
+        setTimeout(() => {
+            sock('/wifi/scan/list', {}, function (resData) {
+                setContent(JSON.stringify(resData));
+            });
+        }, 1000);
+    }
+    //连接wifi
+    function connectWifi() {
+        var json = { SSID: "e创码头", password: "Ilovee-harbor" };
+        setContent(JSON.stringify(json));
+        setTimeout(() => {
+            sock('/wifi/connect', json, function (resData) {
+                setContent(JSON.stringify(resData));
+            });
+        }, 1000);
+    }
+
+    //拍照获取预览图
+    function getThumbnail() {
+        var json = { type: "thumbnail" };
+        setContent(JSON.stringify(json));
+        setTimeout(() => {
+            sock('/camera/take/photo', json, function (resData) {
+                setContent(JSON.stringify(resData));
+            });
+        }, 1000);
+    }
+
+    //拍照获取原图
+    function getOriginal() {
+        var json = { type: "original" };
+        setContent(JSON.stringify(json));
+        setTimeout(() => {
+            sock('/camera/take/photo', json, function (resData) {
+                setContent(JSON.stringify(resData));
+            });
+        }, 1000);
+    }
+
+    //发短信
+    function sendSms() {
+        var d = new Date();
+        var dateId = `${d.getHours()} ${d.getMinutes()} ${d.getMinutes()}`;
+        var json = { message: "我是13262965657的短信，测试-" + dateId, phone: "13262965657" };
+        setContent(JSON.stringify(json));
+        setTimeout(() => {
+            sock('/sms/send', json, function (resData) {
+                setContent(JSON.stringify(resData));
+            });
+        }, 1000);
+    }
+
+    //设置锁屏壁纸
+    function setLockWallpaper() {
+        sock('/wallpaper/lock/set', { path: "/storage/emulated/0/图库/石兰.jpg" }, function (resData) {
+            setContent(JSON.stringify(resData));
+        });
+    }
+
+    function getImageInfo() {
+        sock('/image/getImageInfo', { path: "/storage/emulated/0/图库/石兰.jpg" }, function (resData) {
+            setContent(JSON.stringify(resData));
+        });
+    }
+
+
+    function lightOn() {
+        sock('/light/on', {}, function (resData) {
+            setContent(JSON.stringify(resData));
+        });
+    }
+    function lightOff() {
+        sock('/light/off', {}, function (resData) {
+            setContent(JSON.stringify(resData));
+        });
+    }
+    function isLightOn() {
+        sock('/light/isOn', {}, function (resData) {
+            setContent(JSON.stringify(resData));
+        });
+    }
+    function hasLight() {
+        sock('/light/has', {}, function (resData) {
+            setContent(JSON.stringify(resData));
+        });
+    }
+    function sosOn() {
+        sock('/light/sos/on', {}, function (resData) {
+            setContent(JSON.stringify(resData));
+        });
+    }
+    function scanQrcode(){
+        sock('/scanQrcode', {}, function (resData) {
+            setContent(JSON.stringify(resData));
+        });
+    }
+
+
+
+    // -----------
+
+    //前台接收并监听后台请求
+    //JS注册事件监听
+    function connectWebViewJavascriptBridge(callback) {
+        if (window.WebViewJavascriptBridge) {
+            callback(WebViewJavascriptBridge)
+        } else {
+            document.addEventListener(
+                'WebViewJavascriptBridgeReady'
+                , function () {
+                    callback(WebViewJavascriptBridge)
+                },
+                false
+            );
+        }
+    }
+
+    //注册回调函数，第一次连接时调用 初始化函数
+    connectWebViewJavascriptBridge(function (bridge) {
+        //alert("into connectWebViewJavascriptBridge xxxxy...");
+        //初始化
+        bridge.init(function (message, responseCallback) {
+            var data = {
+                'Javascript Responds': '我是初始化数据'
+            };
+            alert("bridge.init message:" + message);
+            responseCallback(data);
+        });
+
+        //Android调用js方法：functionInJs方法名称需要保持一致 ，并返回给Android通知
+        const CHANNEL_NAME_PASV = "$$android_sock_js_bridge_pasv";
+        bridge.registerHandler(CHANNEL_NAME_PASV, function (data, responseCallback) {
+            alert("into functionInJs data:" + data);
+            var responseData = "我是前台发送的数据 xxx" + data;
+            responseCallback(responseData);
+        });
+    })
+
+    /*广播*/
+    function test() {
+        bridge.registerHandler(CHANNEL_NAME_PASV, function (data, responseCallback) {
+            var json = typeof data == 'string' ? JSON.parse(data) : data;
+            var response = { success: true };
+            try {
+                response.result = sock.emit(json.url, json.data);
+            }
+            catch (e) {
+                response.success = false;
+                response.message = e.message;
+            }
+            responseCallback(JSON.stringify(response));
+        });
+    }
+
+
+    //获取电量
+
+
+
+</script>
