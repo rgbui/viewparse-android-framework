@@ -1,4 +1,4 @@
-package stark.a.is.zhang.viewparse;
+package com.viewparse;
 
 import org.junit.Test;
 
